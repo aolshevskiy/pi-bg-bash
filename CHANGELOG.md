@@ -6,6 +6,11 @@ follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Shorter model-facing bash tool declarations reduce context use without changing
+  parameters, structured results, task states or lifecycle behavior.
+
 ## [0.5.0] - 2026-11-01
 
 ### Added

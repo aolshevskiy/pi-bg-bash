@@ -6,6 +6,12 @@ follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Require Pi 1.5.0 or later and update development dependencies to 1.5.0.
+- The `/bg` task picker now reports Pi as waiting for user input on terminals
+  that support program status. The output viewer does not report a wait.
+
 ## [0.5.1] - 2026-11-01
 
 ### Changed

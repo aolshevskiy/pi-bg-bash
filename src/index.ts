@@ -81,9 +81,9 @@ export default function (pi: ExtensionAPI): void {
 		parameters: Type.Object({
 			...builtin.parameters.properties,
 			waitFor: Type.Optional(
-				Type.String({
+				Type.Union([Type.String(), Type.Null()], {
 					description:
-						"Foreground only: promote on this output substring, returning output so far. timeout still limits the task.",
+						'Foreground only: promote on this output substring, returning output so far. timeout still limits the task. Omit the parameter on ordinary calls; `null` and `""` mean absent.',
 				}),
 			),
 			hold: Type.Optional(
@@ -108,7 +108,8 @@ export default function (pi: ExtensionAPI): void {
 		async execute(toolCallId, params, signal, onUpdate, ctx) {
 			setContext(ctx);
 			if (params.hold && !params.background) throw new Error("hold:true requires background:true.");
-			if (params.waitFor !== undefined && params.background)
+			// null and "" (both "absent") don't conflict with background; only a real substring does.
+			if (params.waitFor != null && params.waitFor !== "" && params.background)
 				throw new Error("waitFor applies to foreground calls: drop `background: true`, or drop `waitFor`.");
 			if (!params.background) return runForeground(toolCallId, params, signal, onUpdate, ctx);
 			const startedAt = Date.now();

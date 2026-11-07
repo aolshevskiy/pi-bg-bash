@@ -729,10 +729,18 @@ describe("a foreground bash call with waitFor", () => {
 		);
 	});
 
-	it("rejects waitFor with background: true and an empty waitFor, launching nothing", async () => {
+	it("rejects waitFor with background; treats null and empty waitFor as absent, launching nothing", async () => {
 		const s = session();
 		await assert.rejects(s.toolCall("bash", { command: "serve", waitFor: "x", background: true }), /waitFor applies/);
-		await assert.rejects(s.toolCall("bash", { command: "serve", waitFor: "" }), /waitFor must not be empty/);
-		assert.equal(procs.all.length, 0);
+		// null (schema's Type.Null) and "" are "absent": both pass schema and execute without promotion or error.
+		for (const [i, empty] of [undefined, null, ""].entries()) {
+			const call = s.toolCall("bash", { command: "serve", waitFor: empty });
+			const proc = await launched(i);
+			proc.write("output\n");
+			proc.exit(0);
+			const out = text(await clock.settle(call));
+			assert.ok(!out.includes("never appeared"), `no annotation for waitFor=${String(empty)}`);
+			assert.ok(!out.includes("background task"), `no promotion for waitFor=${String(empty)}`);
+		}
 	});
 });

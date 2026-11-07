@@ -315,15 +315,18 @@ function promotedText(task: Task, run: Run, output: string): string {
 /** Run foreground bash until exit/timeout/abort, unless waitFor or the user deliberately promotes it. */
 export async function runForeground(
 	toolCallId: string,
-	params: { command: string; timeout?: number; waitFor?: string },
+	params: { command: string; timeout?: number; waitFor?: string | null },
 	signal: AbortSignal | undefined,
 	onUpdate: Parameters<ReturnType<typeof createBashToolDefinition>["execute"]>[3],
 	ctx: ExtensionToolContext,
 ) {
-	const { waitFor, ...piParams } = params;
-	if (waitFor === "") throw new Error("waitFor must not be empty.");
-	const run: Run = { task: undefined, elapsedMs: 0, waitFor, matched: false };
-	const neverAppeared = `"${waitFor}" never appeared in the output.`;
+	const { waitFor, ...piRest } = params;
+	// null (the schema's Type.Null) and an empty string (a common "not using this"
+	// token) both mean absent: no promotion, no annotation, no error.
+	const wf = waitFor == null || waitFor === "" ? undefined : waitFor;
+	const piParams = { command: piRest.command, timeout: piRest.timeout };
+	const run: Run = { task: undefined, elapsedMs: 0, waitFor: wf, matched: false };
+	const neverAppeared = `"${wf}" never appeared in the output.`;
 	const delegate = createBashToolDefinition(ctx.cwd, { operations: operations(ctx, run) });
 	let result: Awaited<ReturnType<typeof delegate.execute>>;
 	try {
@@ -332,7 +335,7 @@ export async function runForeground(
 		// Pi's bash throws its output with the status (aborted, timed out, no exit code).
 		if (error instanceof Error) {
 			error.message = sanitize(error.message);
-			if (waitFor !== undefined && !run.matched) error.message += `\n\n${neverAppeared}`;
+			if (wf !== undefined && !run.matched) error.message += `\n\n${neverAppeared}`;
 		}
 		throw error;
 	}
@@ -347,7 +350,7 @@ export async function runForeground(
 	if (typeof structured?.output === "string")
 		result = { ...result, structuredContent: { ...structured, output: sanitize(structured.output) } } as typeof result;
 	if (run.task === undefined) {
-		if (waitFor === undefined || run.matched) return result;
+		if (wf === undefined || run.matched) return result;
 		const last = result.content.findLastIndex((part) => part.type === "text");
 		const content = result.content.map((part, i) =>
 			i === last && part.type === "text" ? { ...part, text: `${part.text}\n\n${neverAppeared}` } : part,
